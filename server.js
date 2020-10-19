@@ -2,13 +2,13 @@ console.log("Starting RTC...")
 const express = require("express")
 const app = express()
 const server = require('http').Server(app)
+const io = require('socket.io')(server)
 const { v4: uuidV4 } = require('uuid')
 
 app.set('view engine','ejs')
-
 app.use(express.static('public'))
 
-app.get('/',(req,res)=> {
+app.get('/',(req,res) => {
     res.redirect(`/${uuidV4()}`)
     
     })
@@ -18,4 +18,10 @@ res.render('room',{roomId: req.params.room})
 
 })
 
+io.on('connection',socket =>{
+  socket.on('json-room',(roomId,userId)=>{
+      console.log(roomId,userId)
+  })
+
+})
 server.listen(8009)

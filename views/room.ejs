@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <script>
+       const RoomID="<%=  roomId %>"
+   </script>
+   <script src="/socket.io/socket.io.js" defer></script>
+   <script src="script.js" defer></script>
+   <script src="KeyBoardHandler.js" defer></script>
+   <script src="rtcStream.js" defer></script>
+   <script src="httpRequest.js" defer></script>
+
+    <title>Document</title>
+
+    <style>
+        #video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill,300px);
+            grid-template-rows: 300px;
+        }
+        video {
+            width:100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+    
+</head>
+<body onload="startup()">
+     <div id="video-grid"></div>
+     <div id="mjs" class="tip">獲取滑鼠點選位置座標</div> 
+     <div id="test" style="width:500px;height:500px;background:#ccc;" onmousemove="test(event)"></div> 
+
+
+
+     <div class="messagebox">
+        <label for="message">Enter a message:
+            <input type="text" name="message" id="message" placeholder="Message text"
+                    inputmode="latin" size=60 maxlength=120 disabled>
+          </label>
+          <button id="sendButton" name="sendButton" class="buttonright" disabled>
+            Send
+          </button>
+    </div>
+
+     <button id='connectBtn' name='connectBtn' class="buttonleft">connect</button>
+     <button id="disconnectBtn" name='disconnectBtn' class='buttonright'>disconnect</button>
+
+     <div class="messagebox" id="receivebox">
+        <p>Messages received:</p>
+      </div>
+
+     
+      <button  onclick="sendLogin()">make call</button>
+</body>
+</html>
