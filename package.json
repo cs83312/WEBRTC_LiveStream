@@ -22,6 +22,7 @@
     "express": "^4.17.1",
     "prune": "0.0.2",
     "socket.io": "^2.3.0",
+    "socket.io-client": "^2.3.1",
     "uuid": "^8.3.0"
   },
   "devDependencies": {

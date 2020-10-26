@@ -15,8 +15,8 @@ function test(e){
     }
 
     function startup() {
-        connectButton = document.getElementById('connectButton');
-        disconnectButton = document.getElementById('disconnectButton');
+        connectButton = document.getElementById('connectBtn');
+        disconnectButton = document.getElementById('disconnectBtn');
         sendButton = document.getElementById('sendButton');
         messageInputBox = document.getElementById('message');
         receiveBox = document.getElementById('receivebox');
@@ -29,7 +29,16 @@ function test(e){
       }
       function connectPeers(){
             alert("trigger");
-      }
+            localConnection = new RTCPeerConnection();
+
+            sendChannel = localConnection.createDataChannel("sendChannel");
+            sendChannel.onopen = handleSendChannelStatusChange;
+            sendChannel.onclose = handleSendChannelStatusChange;
+
+            remoteConnection = new RTCPeerConnection();
+            remoteConnection.ondatachannel = receiveChannelCallback;
+            
+        }
       function disconnectPeers(){
 
       }

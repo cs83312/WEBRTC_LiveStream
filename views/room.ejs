@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<<<<<<< HEAD
+
    <script>
        const RoomID="<%=  roomId %>"
    </script>
@@ -12,6 +12,7 @@
    <script src="KeyBoardHandler.js" defer></script>
    <script src="rtcStream.js" defer></script>
    <script src="httpRequest.js" defer></script>
+   <script src="Device.js"></script>
 
     <title>Document</title>
 
@@ -23,10 +24,10 @@
         }
         video {
             width:100%;
-=======
+        }
+            </style>
     <script>
         const room_Id = "<%= roomId %>"
-
     </script>
     <script src="/socket.io/socket.io.js" defer></script>
     <script src="script.js" defer></script>
@@ -37,19 +38,34 @@
             grid-template-columns: repeat(aut-fill,300px);
             grid-auto-rows: 300px;
         }
-
+        #myVideo {
+  transform: scaleX(-1);
+}
         video {
             width: 100%;
->>>>>>> 3b6e77272bb31607402b1af91ab37f9c60417d29
+
             height: 100%;
             object-fit: cover;
         }
     </style>
-<<<<<<< HEAD
+
     
 </head>
 <body onload="startup()">
-     <div id="video-grid"></div>
+    <div>
+
+ <button class="initialBtn" onclick="createMedia()">初始化</button>
+      
+  <button class="joinBtn">join room</button>
+  
+  <button class="btnCall">send offer</button>
+                           
+  <video width="200" height="200" autoplay
+    id="myVideo" muted playsinline></video>
+                              
+  <video width="500" height="500" autoplay
+    id="remoteVideo" playsinline></video>
+    </div>
      <div id="mjs" class="tip">獲取滑鼠點選位置座標</div> 
      <div id="test" style="width:500px;height:500px;background:#ccc;" onmousemove="test(event)"></div> 
 
@@ -73,11 +89,11 @@
       </div>
 
      
-      <button  onclick="sendLogin()">make call</button>
-=======
+      <button  onclick="sendStreamRequest()">make call</button>
+      <div id="callresult" class="callresult" style="width:200px;height:200px;background:#ccc;"></div>
+
 </head>
 <body>
     <div id="video-grid"></div>
->>>>>>> 3b6e77272bb31607402b1af91ab37f9c60417d29
 </body>
 </html>
