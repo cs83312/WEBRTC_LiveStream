@@ -11,7 +11,7 @@
 
 - 影音不經過應用伺服器；TURN 中繼時也只轉送加密封包，無法解密。
 - `server/`：`auth.js` 預約 token（JWT）、`signaling.js` 候診室 / 信令轉發 / 斷線寬限、`turn.js` 臨時 TURN 憑證、`audit.js` 稽核紀錄。
-- `public/js/`：`call.js` RTCPeerConnection（perfect negotiation、ICE restart、DataChannel 心跳）、`quality.js` 品質監測與自適應碼率、`media.js` 裝置處理、`main.js` 流程與 UI。
+- `public/js/`：`call.js` RTCPeerConnection（perfect negotiation、ICE restart、DataChannel 心跳、RED 冗餘音訊）、`quality.js` 品質監測與自適應碼率、`media.js` 裝置處理、`main.js` 流程與 UI。
 
 ## 開發
 
@@ -55,7 +55,13 @@ curl -X POST https://consult.example.com/api/appointments \
   TURN_URLS="turn:<本機區網 IP>:3478?transport=udp" ICE_TRANSPORT_POLICY=relay npm run dev
   ```
   TURN 位址請用區網 IP 而非 `127.0.0.1`：瀏覽器取得鏡頭權限後會逐一綁定網卡，連不到 loopback 上的 TURN。品質指示燈的提示文字會顯示「經 TURN 中繼」，也可在 `chrome://webrtc-internals` 確認候選為 relay。
-- 弱網路：Windows 用 [clumsy](https://jagt.github.io/clumsy/) 模擬掉包 / 延遲，觀察品質指示燈與降碼率；拔網路線 10 秒再接回應自動恢復。
+- 弱網路自動測試（需先啟動上面的本機 coturn 與本機 Chrome）：
+  ```bash
+  TURN_SECRET=<同 coturn> TURN_HOST=<本機區網 IP> npm run test:weak-network
+  ```
+  兩個瀏覽器經由一個 UDP 干擾代理連到 TURN（效果同 clumsy 篩選 TURN 埠，但不需管理員權限），依序跑基準 → 中度（RTT 約 150 ms、掉包 2–5%）→ 嚴重（RTT 約 300–490 ms、掉包 8–16%）→ 恢復 → 完全斷線 12 秒，檢查通話不斷、音訊持續、自動降 / 升碼率、建議純語音與自動恢復。加 `AB_DISABLE_RED=1` 可與純 Opus 對照（實測嚴重弱網下音訊補償比例 8.9% → 0.9%）。
+  Docker Desktop（WSL2）核心不含 netem，無法用 `tc` 在容器內模擬。
+- 手動：Windows 也可用 [clumsy](https://jagt.github.io/clumsy/)（需管理員）模擬掉包 / 延遲；拔網路線 10 秒再接回應自動恢復。
 
 ## 合規檢查表（非程式項目）
 
