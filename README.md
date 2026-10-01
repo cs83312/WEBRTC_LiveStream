@@ -23,6 +23,8 @@ npm run dev
 npm test
 ```
 
+用 ngrok 等通道給手機測試時不需額外設定：開發模式預設信任本機代理（`TRUST_PROXY` 未設定時為 `loopback`），邀請連結會自動使用 `https://`。請在電腦開一次 `https://<通道網域>/dev/new`，醫師與病患連結都從同一頁取得，並確認兩端左上角的看診代碼（如 `#5CA6`）相同。
+
 在手機或其他電腦測試時必須使用 HTTPS（瀏覽器規定）：用 [mkcert](https://github.com/FiloSottile/mkcert) 產生 `localhost` 與區網 IP 的憑證，填入 `TLS_CERT` / `TLS_KEY`。
 
 ## 建立預約（給預約系統呼叫）
@@ -38,7 +40,7 @@ curl -X POST https://consult.example.com/api/appointments \
 ## 正式部署
 
 1. `NODE_ENV=production`，設定 `JWT_SECRET`、`ADMIN_API_KEY`、`TURN_SECRET`（各 32 bytes 隨機）。
-2. TLS：直接設定憑證，或放在反向代理後並設 `TRUST_PROXY=true`（代理需支援 WebSocket）。
+2. TLS：直接設定憑證，或放在反向代理後並設定 `TRUST_PROXY`（代理需支援 WebSocket）：`true` = 信任一層代理、`2` = 兩層、或指定 `loopback` / 子網路如 `10.0.0.0/8`。HTTP 與信令使用相同的信任規則決定客戶端 IP（用於限流與稽核），不會採用用戶端偽造的 `X-Forwarded-For`。
 3. TURN：修改 `deploy/turnserver.conf`（realm、`static-auth-secret` = `TURN_SECRET`、`external-ip`、憑證），`docker compose -f deploy/docker-compose.yml up -d`；防火牆開 3478/udp+tcp、443/tcp、49160-49200/udp。
 4. `.env` 設定 `STUN_URLS` / `TURN_URLS`（務必包含 `turns:...:443?transport=tcp`，醫院網路常只放行 443）。
    若不希望醫病雙方得知彼此 IP，設 `ICE_TRANSPORT_POLICY=relay`（所有影音經 TURN，伺服器頻寬需求較高）。

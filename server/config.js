@@ -15,6 +15,17 @@ function list(name) {
   return (process.env[name] || '').split(',').map(s => s.trim()).filter(Boolean)
 }
 
+// Express "trust proxy" value. Unset: trust only local proxies in development (ngrok agent,
+// local nginx) and nothing in production, where it must be configured explicitly.
+function trustProxySetting() {
+  const value = (process.env.TRUST_PROXY || '').trim()
+  if (!value) return isProduction ? false : 'loopback'
+  if (value === 'false') return false
+  if (value === 'true') return 1
+  if (/^d+$/.test(value)) return Number(value)
+  return value // e.g. "loopback", "10.0.0.0/8", "uniquelocal"
+}
+
 function loadConfig(overrides = {}) {
   const config = {
     isProduction,
@@ -22,7 +33,7 @@ function loadConfig(overrides = {}) {
     publicUrl: process.env.PUBLIC_URL || '',
     tlsCert: process.env.TLS_CERT || '',
     tlsKey: process.env.TLS_KEY || '',
-    trustProxy: process.env.TRUST_PROXY === 'true',
+    trustProxy: trustProxySetting(),
     jwtSecret: secret('JWT_SECRET'),
     adminApiKey: secret('ADMIN_API_KEY'),
     turnSecret: process.env.TURN_SECRET || '',

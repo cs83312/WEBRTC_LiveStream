@@ -10,9 +10,9 @@
 <body>
     <section class="screen">
         <div class="card">
-            <h1>測試預約（僅開發環境）</h1>
+            <h1>測試預約 #<%= shortCode %>（僅開發環境）</h1>
             <p>預約編號：<code><%= appointmentId %></code><br>有效期限：<%= notBefore %> ～ <%= expiresAt %></p>
-            <p>請用兩個不同的瀏覽器或裝置分別開啟：</p>
+            <p>請用兩個不同的瀏覽器或裝置分別開啟（重新整理此頁連結不變）。兩端畫面左上角都應顯示 <strong>#<%= shortCode %></strong>：</p>
             <p><a href="<%= doctorUrl %>" target="_blank" rel="noopener">醫師端連結</a></p>
             <p><a href="<%= patientUrl %>" target="_blank" rel="noopener">病患端連結</a></p>
         </div>

@@ -441,6 +441,8 @@ function init() {
   }
 
   $('role-label').textContent = `${ROLE_LABEL[role]}端`
+  // Short appointment code so both sides can confirm they opened links for the same appointment.
+  $('appointment-code').textContent = `#${String(claims.apt).slice(0, 4).toUpperCase()}`
   $('btn-hangup').textContent = isDoctor ? '結束看診' : '離開'
 
   // Consent is required from the patient before any media is captured.

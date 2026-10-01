@@ -24,7 +24,7 @@ function createServer(config, { auditSink } = {}) {
 
   const app = express()
   app.disable('x-powered-by')
-  if (config.trustProxy) app.set('trust proxy', 1)
+  app.set('trust proxy', config.trustProxy)
   app.set('view engine', 'ejs')
   app.set('views', path.join(__dirname, '..', 'views'))
 
@@ -86,9 +86,17 @@ function createServer(config, { auditSink } = {}) {
   })
 
   if (config.enableDevRoutes) {
+    // Create once, then redirect: reloading the page must keep showing the same pair of links.
+    const devAppointments = new Map()
     app.get('/dev/new', noStore, (req, res) => {
       const appointment = auth.createAppointment({ startsAt: new Date(), durationMinutes: 60 })
-      res.render('dev', linksFor(req, appointment))
+      devAppointments.set(appointment.appointmentId, appointment)
+      res.redirect(303, `/dev/appointments/${appointment.appointmentId}`)
+    })
+    app.get('/dev/appointments/:id', noStore, (req, res) => {
+      const appointment = devAppointments.get(req.params.id)
+      if (!appointment) return res.status(404).send('Unknown appointment; open /dev/new to create one.')
+      res.render('dev', { ...linksFor(req, appointment), shortCode: appointment.appointmentId.slice(0, 4).toUpperCase() })
     })
   }
 
@@ -101,7 +109,8 @@ function createServer(config, { auditSink } = {}) {
     pingInterval: 10000,
     pingTimeout: 10000,
   })
-  const signaling = createSignaling(io, { auth, audit, config })
+  // Same proxy trust rules as Express, so HTTP and signaling agree on the client IP.
+  const signaling = createSignaling(io, { auth, audit, config, trustProxy: app.get('trust proxy fn') })
 
   return {
     app,

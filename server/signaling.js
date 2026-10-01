@@ -1,3 +1,4 @@
+const proxyaddr = require('proxy-addr')
 const { getIceServers } = require('./turn')
 
 const MAX_SIGNAL_BYTES = 64 * 1024
@@ -47,13 +48,7 @@ function sanitizeQuality(report) {
   }
 }
 
-function clientIp(socket, trustProxy) {
-  const forwarded = socket.handshake.headers['x-forwarded-for']
-  if (trustProxy && typeof forwarded === 'string') return forwarded.split(',')[0].trim()
-  return socket.handshake.address
-}
-
-function createSignaling(io, { auth, audit, config }) {
+function createSignaling(io, { auth, audit, config, trustProxy = () => false }) {
   const rooms = new Map()
   const endedAppointments = new Map() // appointmentId -> token expiry (ms)
   const connectionCounts = new Map() // ip -> { count, windowStart }
@@ -116,7 +111,9 @@ function createSignaling(io, { auth, audit, config }) {
   }
 
   io.use((socket, next) => {
-    const ip = clientIp(socket, config.trustProxy)
+    // Walks X-Forwarded-For from the right, stopping at the first untrusted hop; the
+    // client-written left part can never be chosen.
+    const ip = proxyaddr(socket.request, trustProxy)
     const now = Date.now()
     const entry = connectionCounts.get(ip)
     if (!entry || now - entry.windowStart > 60000) connectionCounts.set(ip, { count: 1, windowStart: now })

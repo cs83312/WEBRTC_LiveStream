@@ -291,6 +291,96 @@ describe('HTTP API', () => {
   })
 })
 
+describe('dev routes', () => {
+  let dev
+  let devUrl
+  before(async () => {
+    dev = createServer({ ...config, enableDevRoutes: true })
+    await new Promise(resolve => dev.server.listen(0, resolve))
+    devUrl = `http://localhost:${dev.server.address().port}`
+  })
+  after(() => dev.close())
+
+  const linksOf = html => [...html.matchAll(/href="([^"]+#token=[^"]+)"/g)].map(m => m[1])
+
+  // Reloading the page (or ngrok's interstitial re-requesting it) must not mint a different
+  // appointment, otherwise doctor and patient links copied from two loads never meet.
+  test('/dev/new redirects to a stable appointment page', async () => {
+    const res = await fetch(`${devUrl}/dev/new`, { redirect: 'manual' })
+    assert.equal(res.status, 303)
+    const location = res.headers.get('location')
+    assert.match(location, /^\/dev\/appointments\/[0-9a-f-]{36}$/)
+
+    const first = linksOf(await (await fetch(devUrl + location)).text())
+    const second = linksOf(await (await fetch(devUrl + location)).text())
+    assert.equal(first.length, 2)
+    assert.deepEqual(first, second)
+    const [doctor, patient] = first.map(u => dev.auth.verifyToken(u.split('#token=')[1]))
+    assert.equal(doctor.role, 'doctor')
+    assert.equal(patient.role, 'patient')
+    assert.equal(doctor.appointmentId, patient.appointmentId)
+  })
+
+  test('unknown dev appointment returns 404', async () => {
+    const res = await fetch(`${devUrl}/dev/appointments/00000000-0000-0000-0000-000000000000`)
+    assert.equal(res.status, 404)
+  })
+})
+
+describe('behind a reverse proxy (e.g. ngrok)', () => {
+  const servers = []
+  async function start(overrides, auditSink) {
+    const s = createServer({ ...config, enableDevRoutes: true, ...overrides }, { auditSink })
+    await new Promise(resolve => s.server.listen(0, resolve))
+    servers.push(s)
+    return { ...s, url: `http://localhost:${s.server.address().port}` }
+  }
+  after(() => Promise.all(servers.map(s => s.close())))
+
+  async function devLinks(url, headers) {
+    const res = await fetch(`${url}/dev/new`, { redirect: 'manual', headers })
+    const html = await (await fetch(url + res.headers.get('location'), { headers })).text()
+    return [...html.matchAll(/href="([^"]+#token=[^"]+)"/g)].map(m => m[1])
+  }
+
+  test('invitation links use https when a trusted proxy terminates TLS', async () => {
+    const s = await start({ trustProxy: 'loopback' })
+    const links = await devLinks(s.url, { 'x-forwarded-proto': 'https' })
+    assert.equal(links.length, 2)
+    for (const link of links) assert.match(link, /^https:\/\//)
+  })
+
+  test('forwarded headers are ignored when the proxy is not trusted', async () => {
+    const s = await start({ trustProxy: false })
+    const links = await devLinks(s.url, { 'x-forwarded-proto': 'https' })
+    for (const link of links) assert.match(link, /^http:\/\//)
+  })
+
+  test('signaling uses the proxy-reported client IP, not a spoofed X-Forwarded-For entry', async () => {
+    const entries = []
+    const s = await start({ trustProxy: 'loopback', connectionsPerIpPerMinute: 2 }, e => entries.push(e))
+    const connectAs = (xff, token = s.auth.createAppointment({ startsAt: new Date(), durationMinutes: 10 }).tokens.doctor) => {
+      const c = connect(s.url, {
+        auth: { token, sessionId: crypto.randomUUID() },
+        extraHeaders: { 'x-forwarded-for': xff },
+        transports: ['websocket'], reconnection: false, forceNew: true,
+      })
+      sockets.push(c)
+      return c
+    }
+
+    // The trusted local proxy appended 9.9.9.9; "1.1.1.1" was written by the client and must be ignored.
+    await once(connectAs('1.1.1.1, 9.9.9.9'), 'joined')
+    assert.equal(entries.find(e => e.event === 'joined').ip, '9.9.9.9')
+
+    // Rewriting the client-controlled part must not reset the per-IP connection limit.
+    await once(connectAs('2.2.2.2, 9.9.9.9'), 'joined')
+    const err = await once(connectAs('3.3.3.3, 9.9.9.9'), 'connect_error')
+    assert.equal(err.message, 'rate-limited')
+    await once(connectAs('8.8.8.8'), 'joined')
+  })
+})
+
 describe('unit', () => {
   test('TURN credentials follow the coturn REST API format', () => {
     const now = 1_700_000_000_000
