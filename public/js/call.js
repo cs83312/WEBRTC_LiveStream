@@ -32,7 +32,8 @@ export class Call extends EventTarget {
 
     if (!polite) {
       for (const kind of ['audio', 'video']) {
-        this.pc.addTransceiver(this.localTracks[kind] || kind, { direction: 'sendrecv' })
+        const transceiver = this.pc.addTransceiver(this.localTracks[kind] || kind, { direction: 'sendrecv' })
+        if (kind === 'audio') preferRedundantAudio(transceiver)
       }
       this.setupChannel(this.pc.createDataChannel('control', { ordered: true }))
     }
@@ -175,6 +176,7 @@ export class Call extends EventTarget {
       const transceiver = this.transceiverFor(kind)
       if (!transceiver) continue
       transceiver.direction = 'sendrecv'
+      if (kind === 'audio') preferRedundantAudio(transceiver)
       if (transceiver.sender.track !== this.localTracks[kind]) {
         await transceiver.sender.replaceTrack(this.localTracks[kind])
       }
@@ -258,6 +260,20 @@ export class Call extends EventTarget {
     clearInterval(this.heartbeat)
     if (this.channel) this.channel.close()
     this.pc.close()
+  }
+}
+
+// RED (RFC 2198) repeats each Opus frame in the next packet, so isolated packet loss is
+// recovered instead of concealed. Measurably clearer speech on lossy networks.
+function preferRedundantAudio(transceiver) {
+  if (!transceiver.setCodecPreferences || !RTCRtpReceiver.getCapabilities) return
+  const codecs = RTCRtpReceiver.getCapabilities('audio').codecs
+  const rank = c => (c.mimeType === 'audio/red' ? 0 : c.mimeType === 'audio/opus' ? 1 : 2)
+  if (!codecs.some(c => c.mimeType === 'audio/red')) return
+  try {
+    transceiver.setCodecPreferences([...codecs].sort((a, b) => rank(a) - rank(b)))
+  } catch (err) {
+    console.warn('[call] could not prefer RED audio', err)
   }
 }
 

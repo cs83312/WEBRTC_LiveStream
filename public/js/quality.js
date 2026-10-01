@@ -51,7 +51,10 @@ export class QualityMonitor extends EventTarget {
     })
 
     const localCandidate = pair && stats.get(pair.localCandidateId)
-    const inboundLossPct = lost + received > 0 ? (lost / (lost + received)) * 100 : 0
+    // Nothing arrived since the last sample: the path is dead even if RTT stats are stale.
+    const stalled = this.hasBaseline && lost + received === 0
+    this.hasBaseline = true
+    const inboundLossPct = stalled ? 100 : lost + received > 0 ? (lost / (lost + received)) * 100 : 0
     const sample = {
       rttMs: pair && pair.currentRoundTripTime ? pair.currentRoundTripTime * 1000 : 0,
       lossPct: Math.max(inboundLossPct, remoteLossPct),

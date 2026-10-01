@@ -49,6 +49,7 @@ let call = null
 let monitor = null
 let adapter = null
 let lastSample = null
+let audioOnlySuggested = false
 let qualityReportTimer = null
 let callStartedAt = null
 let timerInterval = null
@@ -286,9 +287,10 @@ function startCall({ peerSessionId, polite }) {
   adapter.addEventListener('suggest-audio-only', () => {
     const video = localStream.getVideoTracks()[0]
     if (!video || video.readyState !== 'live') return
+    audioOnlySuggested = true
     showBanner('網路品質不佳，建議關閉鏡頭以確保語音清晰。', {
       label: '改為純語音',
-      onClick: () => { hideBanner(); toggleCamera() },
+      onClick: () => { audioOnlySuggested = false; hideBanner(); toggleCamera() },
     })
   })
 
@@ -298,6 +300,10 @@ function startCall({ peerSessionId, polite }) {
     $('quality').dataset.level = detail.level
     $('quality').title = `連線品質：延遲 ${Math.round(detail.rttMs)} ms，掉包 ${detail.lossPct.toFixed(1)}%，抖動 ${Math.round(detail.jitterMs)} ms${detail.relayed ? '（經 TURN 中繼）' : ''}`
     adapter.onSample(detail.level)
+    if (audioOnlySuggested && detail.level === 'good') {
+      audioOnlySuggested = false
+      hideBanner()
+    }
   })
   monitor.start()
   clearInterval(qualityReportTimer)
