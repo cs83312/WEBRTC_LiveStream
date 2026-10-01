@@ -1,0 +1,9 @@
+services:
+  coturn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    # Host networking avoids Docker NAT on the large UDP relay port range.
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./certs:/etc/coturn/certs:ro

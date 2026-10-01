@@ -1,3 +1,66 @@
-# WEBRTC_LiveStream
+# WEBRTC_LiveStream — 醫療 1對1 視訊看診
 
-## this side project is implement P2P & MCU
+醫師 ↔ 病患點對點視訊看診服務。重點：**即時**（P2P 直連、音訊優先）、**穩定**（TURN、ICE restart、斷線自動恢復、自適應碼率）、**安全**（預約 token、候診室、HTTPS/WSS、DTLS-SRTP、稽核紀錄、不錄影）。
+
+## 架構
+
+```
+瀏覽器(醫師) ──WSS 信令── Node.js (Express + Socket.IO) ──WSS 信令── 瀏覽器(病患)
+      └──────────── DTLS-SRTP 加密影音（直連，或經 coturn 中繼）────────────┘
+```
+
+- 影音不經過應用伺服器；TURN 中繼時也只轉送加密封包，無法解密。
+- `server/`：`auth.js` 預約 token（JWT）、`signaling.js` 候診室 / 信令轉發 / 斷線寬限、`turn.js` 臨時 TURN 憑證、`audit.js` 稽核紀錄。
+- `public/js/`：`call.js` RTCPeerConnection（perfect negotiation、ICE restart、DataChannel 心跳）、`quality.js` 品質監測與自適應碼率、`media.js` 裝置處理、`main.js` 流程與 UI。
+
+## 開發
+
+```bash
+npm install
+cp .env.example .env      # 開發可先留空，會自動產生隨機密鑰
+npm run dev
+# 開啟 http://localhost:8009/dev/new 取得醫師端 / 病患端測試連結
+npm test
+```
+
+在手機或其他電腦測試時必須使用 HTTPS（瀏覽器規定）：用 [mkcert](https://github.com/FiloSottile/mkcert) 產生 `localhost` 與區網 IP 的憑證，填入 `TLS_CERT` / `TLS_KEY`。
+
+## 建立預約（給預約系統呼叫）
+
+```bash
+curl -X POST https://consult.example.com/api/appointments \
+  -H "Authorization: Bearer $ADMIN_API_KEY" -H "Content-Type: application/json" \
+  -d '{"startsAt":"2026-10-01T09:00:00+08:00","durationMinutes":15}'
+```
+
+回傳 `doctorUrl`、`patientUrl`。token 放在 URL `#` 之後，不會進入伺服器日誌或 Referer；有效期為看診時段前後各 30 分鐘（可調）。
+
+## 正式部署
+
+1. `NODE_ENV=production`，設定 `JWT_SECRET`、`ADMIN_API_KEY`、`TURN_SECRET`（各 32 bytes 隨機）。
+2. TLS：直接設定憑證，或放在反向代理後並設 `TRUST_PROXY=true`（代理需支援 WebSocket）。
+3. TURN：修改 `deploy/turnserver.conf`（realm、`static-auth-secret` = `TURN_SECRET`、`external-ip`、憑證），`docker compose -f deploy/docker-compose.yml up -d`；防火牆開 3478/udp+tcp、443/tcp、49160-49200/udp。
+4. `.env` 設定 `STUN_URLS` / `TURN_URLS`（務必包含 `turns:...:443?transport=tcp`，醫院網路常只放行 443）。
+5. 目前房間狀態存在記憶體，請以單一實例執行（1對1 看診的負載很小）；要水平擴充需加上 Socket.IO Redis adapter 與共享狀態。
+
+## 測試與驗證
+
+- `npm test`：token 驗證、候診室、信令白名單、斷線寬限 / 重連、結束看診、API 與安全標頭。
+- 強制走 TURN：在 `call.js` 的 `RTCPeerConnection` 設定暫時加上 `iceTransportPolicy: 'relay'`，於 `chrome://webrtc-internals` 確認候選為 relay。
+- 弱網路：Windows 用 [clumsy](https://jagt.github.io/clumsy/) 模擬掉包 / 延遲，觀察品質指示燈與降碼率；拔網路線 10 秒再接回應自動恢復。
+
+## 合規檢查表（非程式項目）
+
+| 項目 | 說明 |
+| --- | --- |
+| 資料在地化 | 應用伺服器、TURN、稽核日誌放在台灣境內機房 / 雲端區域 |
+| 通訊診察治療辦法 | 診療紀錄與病人身分核對屬 HIS / 病歷系統，本服務只提供通訊；醫師須於看診時核對身分 |
+| 個資法 | 病患進入前須勾選同意（已實作）；需另備完整個資告知文件與連結 |
+| HIPAA | 與雲端 / 主機業者簽 BAA；稽核日誌保存期限依政策設定（`AUDIT_RETENTION_DAYS`） |
+| 稽核紀錄 | `logs/audit-*.jsonl` 只記錄 metadata（預約編號、角色、事件、時間、IP、通話品質），不含影音 / SDP / token |
+| 錄影 | 本服務不錄影；如需錄影須另行評估同意、加密儲存與保存期限 |
+| 弱點管理 | 定期 `npm audit`、更新 coturn 與 Node.js |
+
+---
+
+學習來源：[How To Create A Video Chat App With WebRTC](https://www.youtube.com/watch?v=DvlyzDZDEq4&ab_channel=WebDevSimplified)

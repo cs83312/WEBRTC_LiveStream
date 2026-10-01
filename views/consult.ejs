@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>視訊看診</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/socket.io/socket.io.min.js" defer></script>
+    <script type="module" src="/js/main.js"></script>
+</head>
+<body>
+    <header class="topbar">
+        <span id="role-label" class="role"></span>
+        <span id="conn-status" class="pill" data-state="idle">未連線</span>
+        <span id="quality" class="quality" data-level="unknown" title="連線品質">
+            <i></i><i></i><i></i>
+        </span>
+        <span id="call-timer" class="timer"></span>
+    </header>
+
+    <div id="banner" class="banner" role="status" hidden>
+        <span id="banner-text"></span>
+        <button id="banner-action" class="link" hidden></button>
+    </div>
+
+    <section id="screen-consent" class="screen">
+        <div class="card">
+            <h1>視訊看診</h1>
+            <ul class="notice">
+                <li>影音以點對點加密傳輸（DTLS-SRTP），不經伺服器儲存，本服務不錄影。</li>
+                <li>請在安靜、具隱私的空間進行，並準備好健保卡或身分證件供醫師核對。</li>
+                <li>如遇緊急狀況，請立即撥打 119 或前往急診。</li>
+            </ul>
+            <label id="consent-row" class="consent">
+                <input type="checkbox" id="consent">
+                <span>我同意以通訊方式接受診察，並已了解上述隱私與個人資料說明。</span>
+            </label>
+            <div class="actions">
+                <button id="btn-join" class="primary">開啟鏡頭與麥克風並進入</button>
+                <button id="btn-join-audio" class="secondary">僅使用語音進入</button>
+            </div>
+            <p id="consent-error" class="error" role="alert"></p>
+        </div>
+    </section>
+
+    <section id="screen-call" class="screen" hidden>
+        <div class="stage">
+            <video id="remote-video" autoplay playsinline></video>
+            <div id="remote-placeholder" class="placeholder">
+                <p id="lobby-text">連線中…</p>
+                <button id="btn-admit" class="primary" hidden>允許病患進入</button>
+            </div>
+            <video id="local-video" autoplay playsinline muted></video>
+        </div>
+        <nav class="controls">
+            <button id="btn-mic" aria-pressed="true">麥克風 開</button>
+            <button id="btn-cam" aria-pressed="true">鏡頭 開</button>
+            <button id="btn-settings">裝置設定</button>
+            <button id="btn-hangup" class="danger">離開</button>
+        </nav>
+        <dialog id="settings">
+            <form method="dialog">
+                <h2>裝置設定</h2>
+                <label>麥克風 <select id="select-mic"></select></label>
+                <label>鏡頭 <select id="select-cam"></select></label>
+                <label id="speaker-row">喇叭 <select id="select-speaker"></select></label>
+                <button class="primary">完成</button>
+            </form>
+        </dialog>
+    </section>
+
+    <section id="screen-ended" class="screen" hidden>
+        <div class="card">
+            <h1 id="ended-title">看診已結束</h1>
+            <p id="ended-text"></p>
+        </div>
+    </section>
+</body>
+</html>

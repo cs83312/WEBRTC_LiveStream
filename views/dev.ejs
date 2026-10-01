@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測試預約</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <section class="screen">
+        <div class="card">
+            <h1>測試預約（僅開發環境）</h1>
+            <p>預約編號：<code><%= appointmentId %></code><br>有效期限：<%= notBefore %> ～ <%= expiresAt %></p>
+            <p>請用兩個不同的瀏覽器或裝置分別開啟：</p>
+            <p><a href="<%= doctorUrl %>" target="_blank" rel="noopener">醫師端連結</a></p>
+            <p><a href="<%= patientUrl %>" target="_blank" rel="noopener">病患端連結</a></p>
+        </div>
+    </section>
+</body>
+</html>
