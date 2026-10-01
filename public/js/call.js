@@ -9,7 +9,7 @@ const HEARTBEAT_INTERVAL_MS = 2000
 const HEARTBEAT_STALL_MS = 6000
 
 export class Call extends EventTarget {
-  constructor({ polite, peerSessionId, iceServers, sendSignal, fetchIceServers, localTracks }) {
+  constructor({ polite, peerSessionId, iceServers, iceTransportPolicy = 'all', sendSignal, fetchIceServers, localTracks }) {
     super()
     this.polite = polite
     this.peerSessionId = peerSessionId
@@ -26,7 +26,7 @@ export class Call extends EventTarget {
     this.lastPeerMessageAt = 0
     this.peerStalled = false
 
-    this.pc = new RTCPeerConnection({ iceServers, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' })
+    this.pc = new RTCPeerConnection({ iceServers, iceTransportPolicy, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' })
     this.remoteStream = new MediaStream()
     this.wirePeerConnection()
 
@@ -60,6 +60,9 @@ export class Call extends EventTarget {
       this.remoteStream.addTrack(track)
       this.emit('remote-stream', this.remoteStream)
     }
+
+    // Surfaces TURN misconfiguration (bad credentials, unreachable server) in the console.
+    pc.onicecandidateerror = e => console.warn('[call] ICE candidate error', e.errorCode, e.errorText, e.url)
 
     pc.ondatachannel = ({ channel }) => this.setupChannel(channel)
 

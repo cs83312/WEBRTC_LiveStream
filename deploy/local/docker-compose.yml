@@ -1,0 +1,18 @@
+# LOCAL TESTING ONLY. Usage (Git Bash):
+#   TURN_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))") \
+#   TURN_EXTERNAL_IP=<your LAN IP> docker compose -f deploy/local/docker-compose.yml up -d
+services:
+  coturn:
+    image: coturn/coturn:4.6
+    # Docker Desktop on Windows/macOS has no host networking, so map ports 1:1.
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49160-49200:49160-49200/udp"
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command:
+      - -c
+      - /etc/coturn/turnserver.conf
+      - --static-auth-secret=${TURN_SECRET:?set TURN_SECRET}
+      - --external-ip=${TURN_EXTERNAL_IP:?set TURN_EXTERNAL_IP}

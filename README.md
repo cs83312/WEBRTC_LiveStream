@@ -41,12 +41,20 @@ curl -X POST https://consult.example.com/api/appointments \
 2. TLS：直接設定憑證，或放在反向代理後並設 `TRUST_PROXY=true`（代理需支援 WebSocket）。
 3. TURN：修改 `deploy/turnserver.conf`（realm、`static-auth-secret` = `TURN_SECRET`、`external-ip`、憑證），`docker compose -f deploy/docker-compose.yml up -d`；防火牆開 3478/udp+tcp、443/tcp、49160-49200/udp。
 4. `.env` 設定 `STUN_URLS` / `TURN_URLS`（務必包含 `turns:...:443?transport=tcp`，醫院網路常只放行 443）。
+   若不希望醫病雙方得知彼此 IP，設 `ICE_TRANSPORT_POLICY=relay`（所有影音經 TURN，伺服器頻寬需求較高）。
 5. 目前房間狀態存在記憶體，請以單一實例執行（1對1 看診的負載很小）；要水平擴充需加上 Socket.IO Redis adapter 與共享狀態。
+   重啟信令伺服器時進行中的通話不會中斷（醫師端會自動重新核准同一病患頁面），但「已結束的預約」清單會遺失，重啟後到期前的舊連結可再次進入；正式環境建議將其改存資料庫。
 
 ## 測試與驗證
 
 - `npm test`：token 驗證、候診室、信令白名單、斷線寬限 / 重連、結束看診、API 與安全標頭。
-- 強制走 TURN：在 `call.js` 的 `RTCPeerConnection` 設定暫時加上 `iceTransportPolicy: 'relay'`，於 `chrome://webrtc-internals` 確認候選為 relay。
+- 本機 TURN 測試（Docker Desktop）：
+  ```bash
+  export TURN_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+  TURN_EXTERNAL_IP=<本機區網 IP> docker compose -f deploy/local/docker-compose.yml up -d
+  TURN_URLS="turn:<本機區網 IP>:3478?transport=udp" ICE_TRANSPORT_POLICY=relay npm run dev
+  ```
+  TURN 位址請用區網 IP 而非 `127.0.0.1`：瀏覽器取得鏡頭權限後會逐一綁定網卡，連不到 loopback 上的 TURN。品質指示燈的提示文字會顯示「經 TURN 中繼」，也可在 `chrome://webrtc-internals` 確認候選為 relay。
 - 弱網路：Windows 用 [clumsy](https://jagt.github.io/clumsy/) 模擬掉包 / 延遲，觀察品質指示燈與降碼率；拔網路線 10 秒再接回應自動恢復。
 
 ## 合規檢查表（非程式項目）

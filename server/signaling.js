@@ -189,10 +189,12 @@ function createSignaling(io, { auth, audit, config }) {
       role,
       admitted: room.admitted,
       peerOnline: !!room.sockets[other],
+      peerSessionId: room.sockets[other] ? room.sessions[other] : null,
       iceServers: getIceServers(config, `${appointmentId}:${role}`),
+      iceTransportPolicy: config.iceTransportPolicy,
     })
     const peer = room.sockets[other]
-    if (peer) peer.emit('peer-online', { role, admitted: room.admitted })
+    if (peer) peer.emit('peer-online', { role, admitted: room.admitted, peerSessionId: sessionId })
     startCall(room)
 
     on('admit', () => {

@@ -116,13 +116,17 @@ export class VideoAdapter extends EventTarget {
     return this.apply()
   }
 
+  // Serialized: overlapping getParameters/setParameters calls on one sender are rejected by Chrome.
   apply() {
-    const sender = this.getSender()
-    if (!sender || !sender.track) return Promise.resolve()
-    const target = VIDEO_STEPS[this.step]
-    return updateParameters(sender, params => {
-      params.degradationPreference = 'maintain-resolution'
-      Object.assign(params.encodings[0], target)
+    this.pending = (this.pending || Promise.resolve()).then(() => {
+      const sender = this.getSender()
+      if (!sender || !sender.track) return
+      const target = VIDEO_STEPS[this.step]
+      return updateParameters(sender, params => {
+        params.degradationPreference = 'maintain-resolution'
+        Object.assign(params.encodings[0], target)
+      })
     })
+    return this.pending
   }
 }

@@ -19,6 +19,7 @@ const config = {
   turnUrls: ['turn:turn.example.com:3478', 'turns:turn.example.com:443?transport=tcp'],
   stunUrls: ['stun:turn.example.com:3478'],
   turnTtlSeconds: 600,
+  iceTransportPolicy: 'all',
   reconnectGraceMs: 200,
   connectionsPerIpPerMinute: 1000,
   earlyJoinMinutes: 30,
@@ -124,6 +125,7 @@ describe('authentication', () => {
     const turn = joined.iceServers.find(s => s.username)
     assert.ok(turn)
     assert.deepEqual(turn.urls, config.turnUrls)
+    assert.equal(joined.iceTransportPolicy, 'all')
   })
 })
 
@@ -139,6 +141,8 @@ describe('waiting room and signaling', () => {
     const doctorJoined = await once(doctor, 'joined')
     assert.equal(doctorJoined.peerOnline, true)
     assert.equal(doctorJoined.admitted, false)
+    // Lets the doctor recognise the same patient page after a signaling server restart.
+    assert.equal(doctorJoined.peerSessionId, patient.auth.sessionId)
 
     // Signals before admission are dropped.
     patient.emit('signal', { description: { type: 'offer', sdp: 'v=0' } })

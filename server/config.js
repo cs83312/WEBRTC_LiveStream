@@ -29,6 +29,8 @@ function loadConfig(overrides = {}) {
     turnUrls: list('TURN_URLS'),
     stunUrls: list('STUN_URLS'),
     turnTtlSeconds: Number(process.env.TURN_TTL_SECONDS || 600),
+    // 'relay' forces all media through TURN: peers never learn each other's IP addresses.
+    iceTransportPolicy: process.env.ICE_TRANSPORT_POLICY === 'relay' ? 'relay' : 'all',
     // How long a disconnected participant keeps their slot before the peer is told they left.
     reconnectGraceMs: Number(process.env.RECONNECT_GRACE_MS || 30000),
     connectionsPerIpPerMinute: Number(process.env.CONNECTIONS_PER_IP_PER_MINUTE || 30),

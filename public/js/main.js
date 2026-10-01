@@ -42,6 +42,7 @@ const sessionId = crypto.randomUUID()
 let socket = null
 let localStream = new MediaStream()
 let iceServers = []
+let iceTransportPolicy = 'all'
 let admitted = false
 let peerOnline = false
 let call = null
@@ -173,7 +174,6 @@ async function toggleCamera() {
   if (video && video.readyState === 'live') return replaceLocalTrack('video', null)
   try {
     await replaceLocalTrack('video', await getVideoTrack(selected.cam))
-    if (adapter) await adapter.apply()
   } catch (err) {
     showBanner(describeMediaError(err))
   }
@@ -233,6 +233,7 @@ function startCall({ peerSessionId, polite }) {
     polite,
     peerSessionId,
     iceServers,
+    iceTransportPolicy,
     sendSignal: msg => socket.emit('signal', msg),
     fetchIceServers,
     localTracks: { audio: localStream.getAudioTracks()[0], video: localStream.getVideoTracks()[0] },
@@ -321,6 +322,12 @@ function teardownCall() {
 
 // --- Signaling -------------------------------------------------------------
 
+// After a signaling server restart the room state (including admission) is gone. If the doctor
+// is still in a live call with this exact patient page, re-admit it so renegotiation keeps working.
+function readmitIfSameCall(peerSessionId) {
+  if (isDoctor && !admitted && call && peerSessionId && call.peerSessionId === peerSessionId) socket.emit('admit')
+}
+
 function connectSignaling() {
   socket = io({
     auth: { token, sessionId },
@@ -347,8 +354,10 @@ function connectSignaling() {
 
   socket.on('joined', data => {
     iceServers = data.iceServers
+    iceTransportPolicy = data.iceTransportPolicy || 'all'
     admitted = data.admitted
     peerOnline = data.peerOnline
+    readmitIfSameCall(data.peerSessionId)
     updateLobby()
   })
 
@@ -356,6 +365,7 @@ function connectSignaling() {
     peerOnline = true
     admitted = data.admitted
     hideBanner()
+    readmitIfSameCall(data.peerSessionId)
     updateLobby()
   })
 
@@ -471,7 +481,6 @@ function init() {
     selected.cam = e.target.value
     try {
       await replaceLocalTrack('video', await getVideoTrack(selected.cam))
-      if (adapter) await adapter.apply()
     } catch (err) {
       showBanner(describeMediaError(err))
     }
